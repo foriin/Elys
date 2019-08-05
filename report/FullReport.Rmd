@@ -1,0 +1,530 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+urlcolor: blue
+---
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(dplyr)
+library(knitr)
+library(data.table)
+library(GenomicAlignments)
+library(GenomicRanges)
+library(ggplot2)
+library(Gviz)
+library(kableExtra)
+library(gridExtra)
+
+rm(list=ls())
+```
+
+# Elys and Lamin B/C depletions in spermatogonia and spermatocytes
+
+
+## 1. RNA-seq in larval testes. Differential expresion and TPM comparison.  
+### 1.1. Comparison of all genes
+```{r echo=FALSE}
+load("../RData/lartest.DESeq.RData")
+load("../RData/tpms.analysis.RData")
+
+```
+We used a BDGP5.78 annotation for _Drosophila_ genes:  
+```{r echo=FALSE}
+kable(head(genes))
+```
+
+Using [salmon](https://combine-lab.github.io/salmon/) we obtained read counts per gene and normalized TPM values:
+```{r echo=FALSE}
+kable(head(tpms[,-c(1, 7, 11)], digits = 2))
+```  
+
+
+The main question that we investigate is whether the expression of genes on X-chromosome is higher than of those on autosomes in spermatocytes? And do Elys and/or Lamins knockdowns alter this discordance?
+
+
+```{r echo=FALSE, fig.height=4.8, fig.width=9}
+tpms.m <- tpms.m[!tpms.m$gene_name %in% c("CG14215","Lam", "LamC"), ]
+
+boxplot(value ~ variable + chrom,
+        data = tpms.m,
+        outline = F,
+        ylab = "TPM",
+        xlab = "",
+        ylim = c(0, 200),
+        main = "All genes comparison between X and A")
+Ns <- table(tpms$chrom)
+pv <- mapply(function(x,y) format(wilcox.test(tpms.chrom.sp[[x]]$value,
+                                        tpms.chrom.sp[[y]]$value)$p.value, digits = 3),
+       1:6,
+       c(2,3,1, 5, 6, 4))
+text(paste0("n on ",c("X: ", "A: "), Ns),
+      x=c(0.8, 0.82), y = c(200, 192), cex = 0.7)
+lines(c(1,1,2,2 ), c(118, 120, 120, 118))
+lines(c(2,2,3,3 ), c(123, 125, 125, 123))
+lines(c(1,1,3,3 ), c(133, 135, 135, 133))
+lines(c(4,4,5,5 ), c(163, 165, 165, 163))
+lines(c(5,5,6,6 ), c(168, 170, 170, 168))
+lines(c(4,4,6,6 ), c(178, 180, 180, 178))
+
+text(paste0("p.v = ", pv),
+      x=c(1.5, 2.5, 2, 4.5, 5.5, 5),
+      y = c(124, 129, 139, 169, 174, 184), cex = 0.7)
+
+```
+
+
+Median ratio of WT X to WT A is equal to `r format(median(tpms$WT[tpms$chrom == "X"])/median(tpms$WT[tpms$chrom == "A"]), digits = 2)`
+
+
+\pagebreak
+
+Let's see the ratios of TPMs in case of Elys and Lams knockdowns.
+p.v~1~ represents one-tailed comparison of each sample's medians with 1 via wilcoxon test, p.v~2~ represents two-tailed two-sample comparison using the same test
+
+```{r echo = FALSE}
+par(mfrow = c(1,2))
+boxplot(el.wt ~ chrom, data = tpms.1,
+        outline = F,
+        ylab = "(KD TPM)/(WT TPM)",
+        ylim = c(0, 3),
+        xlab = "",
+        main = "Elys KD")
+text(1, 2.3, bquote("p.v"[1] ~ "=" ~
+                   .(format(wilcox.test(tpms.1$el.wt[tpms.1$chrom == "X"], mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(2, 2.27, bquote("p.v"[1] ~ "=" ~
+                   .(format(wilcox.test(tpms.1$el.wt[tpms.1$chrom == "A"], mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(1.5, 1.7, bquote("p.v"[2] ~ "=" ~
+                   .(format(wilcox.test(el.wt ~ chrom, tpms.1)$p.value,
+                   digits = 2))),
+     cex = 0.7)
+
+boxplot(lam.wt ~ chrom, data = tpms.1,
+        outline = F,
+        ylab = "",xlab = "",
+        ylim = c(0,3),
+        main = "Lamins KD")
+text(1, 1.9, bquote("p.v"[1] ~ "=" ~
+                   .(format(wilcox.test(tpms.1$lam.wt[tpms.1$chrom == "X"], mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(2, 1.9, bquote("p.v"[1] ~ "=" ~
+                   .(format(wilcox.test(tpms.1$lam.wt[tpms.1$chrom == "A"], mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(1.5, 1.5, bquote("p.v"[2] ~ "=" ~
+                   .(format(wilcox.test(lam.wt ~ chrom, tpms.1)$p.value,
+                   digits = 2))),
+     cex = 0.7)
+```
+
+### 1.2. Comparisons of genes that have at least one TPM in all treatments
+
+```{r echo=FALSE, fig.height=4.8, fig.width=9}
+boxplot(value ~ variable + chrom,
+        data = tpms.3.m,
+        outline = F,
+        ylab = "TPM",
+        xlab = "",
+        ylim = c(0, 300),
+        main = "Genes w/ TPM > 1 comparison between X and A")
+Ns <- table(tpms.3$chrom)
+pv <- mapply(function(x,y) format(wilcox.test(tpms.3.chrom.sp[[x]]$value,
+                                        tpms.3.chrom.sp[[y]]$value)$p.value, digits = 3),
+       1:6,
+       c(2,3,1, 5, 6, 4))
+text(paste0("n on ",c("X: ", "A: "), Ns),
+      x=c(0.8, 0.82), y = c(290, 280), cex = 0.7)
+ytc <- c(165, 170, 182, 265, 270, 282)
+marg <- 2
+lines(c(1,1,2,2 ), c(ytc[1] - marg, ytc[1], ytc[1], ytc[1] - marg))
+lines(c(2,2,3,3 ), c(ytc[2] - marg, ytc[2], ytc[2], ytc[2] - marg))
+lines(c(1,1,3,3 ), c(ytc[3] - marg, ytc[3], ytc[3], ytc[3] - marg))
+lines(c(4,4,5,5 ), c(ytc[4] - marg, ytc[4], ytc[4], ytc[4] - marg))
+lines(c(5,5,6,6 ), c(ytc[5] - marg, ytc[5], ytc[5], ytc[5] - marg))
+lines(c(4,4,6,6 ), c(ytc[6] - marg, ytc[6], ytc[6], ytc[6] - marg))
+
+text(paste0("p.v = ", pv),
+      x=c(1.5, 2.5, 2, 4.5, 5.5, 5),
+      y = ytc + 5, cex = 0.7)
+
+```
+
+Median ratio of WT X to WT A for these genes is equal to `r format(median(tpms.3$WT[tpms.3$chrom == "X"])/median(tpms.3$WT[tpms.3$chrom == "A"]), digits = 2)`
+
+
+```{r echo = FALSE}
+par(mfrow = c(1,2))
+boxplot(el.wt ~ chrom, data = tpms.3,
+        outline = F,
+        ylab = "(KD TPM)/(WT TPM)",
+        ylim = c(0, 3),
+        xlab = "",
+        main = "Elys KD")
+text(1, 2.3, bquote("p.v"[1] ~ "=" ~
+                   .(format(wilcox.test(tpms.3$el.wt[tpms.3$chrom == "X"], mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(2, 2.27, bquote("p.v"[1] ~ "=" ~
+                   .(format(wilcox.test(tpms.3$el.wt[tpms.3$chrom == "A"], mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(1.5, 1.7, bquote("p.v"[2] ~ "=" ~
+                   .(format(wilcox.test(el.wt ~ chrom, tpms.3)$p.value,
+                   digits = 2))),
+     cex = 0.7)
+
+boxplot(lam.wt ~ chrom, data = tpms.3,
+        outline = F,
+        ylab = "",xlab = "",
+        ylim = c(0,3),
+        main = "Lamins KD")
+text(1, 1.9, bquote("p.v"[1] ~ "=" ~
+                   .(format(wilcox.test(tpms.3$lam.wt[tpms.3$chrom == "X"], mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(2, 1.9, bquote("p.v"[1] ~ "=" ~
+                   .(format(wilcox.test(tpms.3$lam.wt[tpms.3$chrom == "A"], mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(1.5, 1.5, bquote("p.v"[2] ~ "=" ~
+                   .(format(wilcox.test(lam.wt ~ chrom, tpms.3)$p.value,
+                   digits = 2))),
+     cex = 0.7)
+```
+
+
+\pagebreak
+
+### 1.3. Differential expression analysis
+```{r echo = FALSE}
+load("../RData/lartest.DESeq.RData")
+```
+
+Differential expression analysis was performed using DESeq2.
+
+Volcano plot for Elys KD:  
+
+```{r echo=FALSE, fig.height=6, fig.width=6}
+p1 <- ggplot(res.df.elys %>% filter(!is.na(padj)) %>% 
+         mutate(col = ifelse(abs(log2FoldChange)>1 & padj < 0.05, "blue", "black")),
+  aes(x = log2FoldChange, y = -log10(padj)))+
+  geom_point(aes(col = col))+
+  geom_text(aes(label=ifelse(-log10(padj) > 20 ,as.character(gene_name),'')),
+  vjust=-0.6, show.legend = F, size = 3)+
+  geom_hline(yintercept = 1.30, linetype = "dashed", col = "red")+
+  theme_bw()+
+  theme(legend.position="none")+
+  ggtitle("Elys KD vs WT")
+
+p2 <- ggplot(res.df.lam %>% filter(!is.na(padj)) %>% 
+         mutate(col = ifelse(abs(log2FoldChange)>1 & padj < 0.05, "blue", "black")),
+  aes(x = log2FoldChange, y = -log10(padj)))+
+  geom_point(aes(col = col))+
+  geom_text(aes(label=ifelse(-log10(padj) > 20 ,as.character(gene_name),'')),
+  vjust=-0.6, show.legend = F, size = 3)+
+  geom_hline(yintercept = 1.30, linetype = "dashed", col = "red")+
+  theme_bw()+
+  ylab(NULL)+
+  theme(legend.position="none")+
+  ggtitle("Lam KD vs WT")
+
+grid.arrange(p1, p2, nrow = 1)
+```
+
+
+
+\pagebreak
+
+
+Here are similar boxplots for differentially expressed genes (via DESeq2 and TPM ratio > 2:
+
+```{r echo=FALSE, out.width=c('50%', '50%'), fig.height = 5, fig.width = 5, warning=FALSE}
+
+boxplot(value ~ variable + chrom,
+        data = tpms.el.s.m,
+        outline = F, main = "Elys KD",
+        ylab = "TPM", xlab = "",
+        ylim = c(0, 42))
+text(c(1.5, 3.5),
+     c(40, 30), 
+     cex = 0.6,
+     c(paste("p-value =",
+           format(wilcox.test(tpms.el.s$WT[tpms.el.s$chr == "chrX"],
+                 tpms.el.s$ElysKD[tpms.el.s$chr == "chrX"])$p.value,
+            digits = 3)),
+     paste("p-value =",
+           format(wilcox.test(tpms.el.s$WT[tpms.el.s$chrom == "A"],
+                              tpms.el.s$ElysKD[tpms.el.s$chrom == "A"])$p.value,
+                  digits = 3))))
+
+boxplot(value ~ variable + chrom,
+        data = tpms.lam.s.m,
+        outline = F, main = "Lams KD",
+        ylab = "", xlab = "",
+        ylim = c(0, 42))
+text(c(1.5, 3.5),
+     c(27, 27),
+     cex = 0.6,
+     c(paste("p-value =",
+             format(wilcox.test(tpms.lam.s$WT[tpms.lam.s$chrom == "A"],
+                                tpms.lam.s$LamKD[tpms.lam.s$chrom == "A"])$p.value,
+                    digits = 3)),
+       paste("p-value =",
+             format(wilcox.test(tpms.lam.s$WT[tpms.lam.s$chr == "chrX"],
+                                tpms.lam.s$LamKD[tpms.lam.s$chr == "chrX"])$p.value,
+                                              digits = 3))
+     ))
+```
+
+
+
+
+```{r echo = FALSE}
+par(mfrow = c(1, 2))
+
+boxplot(el.wt ~ chrom, data = tpms.el.s,
+        ylab = "(KD TPM)/(WT TPM)", xlab = "",
+        main = "Elys KD",
+        ylim = c(0, 9),
+        outline = F)
+text(1, 7.4, bquote("p.v"[1] ~ "=" ~
+            .(format(wilcox.test(tpms.el.s$el.wt[tpms.el.s$chrom == "X"],
+                               mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(2, 6.0, bquote("p.v"[1] ~ "=" ~
+            .(format(wilcox.test(tpms.el.s$el.wt[tpms.el.s$chrom == "A"],
+                               mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(1.5, 4, bquote("p.v"[2] ~ "=" ~
+            .(format(wilcox.test(el.wt ~ chrom, tpms.el.s)$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(c(2.08, 2.1),
+     c(8.9, 8.5),
+     paste0("n genes on ",
+            c("X: ", "A: "),
+            table(tpms.el.s$chrom)),
+     cex = 0.6)
+
+boxplot(lam.wt ~ chrom, data = tpms.lam.s,
+        ylab = "", xlab = "",
+        main = "Lam KD",
+        ylim = c(0,9),
+        outline = F)
+text(1, 5.9, bquote("p.v"[1] ~ "=" ~
+            .(format(wilcox.test(tpms.lam.s$lam.wt[tpms.lam.s$chrom == "X"],
+                               mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(2, 7.6, bquote("p.v"[1] ~ "=" ~
+            .(format(wilcox.test(tpms.lam.s$lam.wt[tpms.lam.s$chrom == "A"],
+                               mu = 1, alt = "g")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(1.5, 4, bquote("p.v"[2] ~ "=" ~
+            .(format(wilcox.test(lam.wt ~ chrom, tpms.lam.s)$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(c(0.88, 0.9),
+     c(8.9, 8.5),
+     paste0("n genes on ",
+            c("X: ", "A: "),
+            table(tpms.lam.s$chrom)),
+     cex = 0.6)
+
+```
+\pagebreak
+
+Dot plots for TPMs of differentially expressed genes (TPM ratio > 2):
+
+
+```{r echo = FALSE, out.width=c('51%', '49%'), fig.height = 5, fig.width = 5, warning=FALSE}
+tpms.d.e <- tpms.2 %>% filter(id %in% res.df.elys.sig$id) %>% 
+         mutate(col = as.character(chrom))
+tpms.d.e$col[abs(log2(tpms.d.e$ElysKD/ tpms.d.e$WT)) < 1 ] <- "0"
+tpms.d.e$col <- factor(tpms.d.e$col)
+p1 <- ggplot(tpms.d.e %>% arrange(col),
+       aes(x = log2(WT), y = log2(ElysKD)))+
+  geom_point(aes(col = col))+
+  geom_abline()+
+  theme_bw()+
+  theme(line = element_blank())+
+  scale_color_manual(breaks = c("X", "A"),
+                     values=c("#BBBBBB", "#0010DD", "#DD1010"),
+                     name = "Chromosome")+
+  theme(legend.position = c(0.20, 0.87))+
+  xlab("log2(TPM WT)")+
+  ylab("log2(TPM KD)")+
+  ggtitle("Elys KD")
+
+tpms.d.l <- tpms %>% filter(id %in% res.df.lam.sig$id) %>% 
+         mutate(col = as.character(chrom))
+tpms.d.l$col[abs(log2(tpms.d.l$LamKD/ tpms.d.l$WT)) < 1 ] <- "0"
+tpms.d.l$col <- factor(tpms.d.l$col)
+p2 <- ggplot(tpms.d.l %>% arrange(col),
+       aes(x = log2(WT), y = log2(LamKD)))+
+  geom_point(aes(col = col))+
+  geom_abline()+
+  theme_bw()+
+  theme(line = element_blank())+
+  scale_color_manual(breaks = c("X", "A"),
+                     values=c("#BBBBBB", "#0010DD", "#DD1010"),
+                     name = "Chromosome")+
+  xlab("log2(TPM WT)")+
+  theme(legend.position = c(0.20, 0.87))+
+  ylab("")+
+  ggtitle("Lam B/C KD")
+
+#grid.arrange(p1, p2, nrow = 1)
+p1
+p2
+
+```
+
+SpC-specific genes:
+
+
+```{r echo = FALSE, out.width=c('51%', '49%'), fig.height = 5, fig.width = 5, warning=FALSE}
+tpms.d.e <- tpms.2 %>% filter(id %in% res.df.elys.sig$id,
+                              abs(log2(ElysKD/WT)) > 1) %>% 
+         mutate(col = ifelse(chrom == "X", "SpC-specific on X", "SpC-specific on A"))
+tpms.d.e$col <- factor(tpms.d.e$col)
+p1 <- ggplot(tpms.d.e %>% arrange(col),
+       aes(x = log2(WT), y = log2(ElysKD)))+
+  geom_point(aes(col = col))+
+  geom_abline()+
+  theme_bw()+
+  theme(line = element_blank())+
+  scale_color_manual(breaks = c("SpC-specific on X", "SpC-specific on A"),
+                     values=c("#10DD10", "#DD1010"),
+                     name = "")+
+  theme(legend.position = c(0.80, 0.15))+
+  xlab("log2(TPM WT)")+
+  ylab("log2(TPM KD)")+
+  ggtitle("Elys KD")
+
+tpms.d.l <- tpms.2 %>% filter(id %in% res.df.lam.sig$id,
+                              abs(log2(LamKD/WT)) > 1) %>% 
+         mutate(col = ifelse(chrom == "X", "SpC-specific on X", "SpC-specific on A"))
+tpms.d.l$col <- factor(tpms.d.l$col)
+p2 <- ggplot(tpms.d.l %>% arrange(col),
+       aes(x = log2(WT), y = log2(LamKD)))+
+  geom_point(aes(col = col))+
+  geom_abline()+
+  theme_bw()+
+  theme(line = element_blank())+
+  scale_color_manual(breaks = c("SpC-specific on X", "SpC-specific on A"),
+                     values=c("#10DD10", "#DD1010"),
+                     name = "")+
+  xlab("log2(TPM WT)")+
+  theme(legend.position = c(0.80, 0.17))+
+  ylab("")+
+  ggtitle("Lam B/C KD")
+
+#grid.arrange(p1, p2, nrow = 1)
+p1
+p2
+
+```
+
+\pagebreak
+
+### 1.4 Spermatocyte-specific genes  
+
+Boxplot with TPMs for SpC-specific genes (p-values are from two-sample two-sided wilcoxon test):
+
+```{r echo = FALSE, fig.width=8, fig,height = 5}
+boxplot(value ~ variable + chrom,
+        data = tpms.2.m,
+        outline = F,
+        ylab = "TPM",
+        xlab = "",
+        ylim = c(0, 700),
+        main = "SpC-specific genes comparison between X and A")
+Ns <- table(tpms.2$chrom)
+text(paste0("genes on ",c("X: ", "A: "), Ns),
+      x=c(0.9, 0.9), y = c(700, 660), cex = 0.7)
+pv <- mapply(function(x,y) format(wilcox.test(tpms.2.sp[[x]]$value,
+                                        tpms.2.sp[[y]]$value)$p.value, digits = 3),
+       1:6,
+       c(2,3,1, 5, 6, 4))
+
+lines(c(1,1,2,2 ), c(505, 510, 510, 505))
+lines(c(2,2,3,3 ), c(520, 525, 525, 520))
+lines(c(1,1,3,3 ), c(550, 555, 555, 550))
+lines(c(4,4,5,5 ), c(615, 620, 620, 615))
+lines(c(5,5,6,6 ), c(630, 635, 635, 630))
+lines(c(4,4,6,6 ), c(660, 665, 665, 660))
+
+text(paste0("p.v = ", pv),
+      x=c(1.5, 2.5, 2, 4.5, 5.5, 5),
+      y = c(520, 535, 565, 630, 645, 675), cex = 0.7)
+```
+
+Median ratios of WT X to WT A for SpC-specific genes is equal to `r format(median(tpms.2$WT[tpms.2$chrom == "X"])/median(tpms.2$WT[tpms.2$chrom == "A"]), digits = 2)`
+
+Ratios (p.v~1~ represents testing if medians are lower than 1):
+
+```{r echo = FALSE}
+par(mfrow = c(1, 2))
+
+boxplot(el.wt ~ chrom, data = tpms.2,
+        ylab = "(KD TPM)/(WT TPM)", xlab = "",
+        main = "Elys KD",
+        ylim = c(0, 1.6),
+        outline = F)
+text(1, 1.3, bquote("p.v"[1] ~ "=" ~
+            .(format(wilcox.test(tpms.2$el.wt[tpms.2$chrom == "X"],
+                               mu = 1, alt = "l")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(2, 1.3, bquote("p.v"[1] ~ "=" ~
+            .(format(wilcox.test(tpms.2$el.wt[tpms.2$chrom == "A"],
+                               mu = 1, alt = "l")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(1.5, 1.1, bquote("p.v"[2] ~ "=" ~
+            .(format(wilcox.test(el.wt ~ chrom, tpms.2)$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(c(2.1, 2.1),
+     c(1.6, 1.5),
+     paste0("n genes on ",
+            c("X: ", "A: "),
+            table(tpms.2$chrom)),
+     cex = 0.6)
+
+boxplot(lam.wt ~ chrom, data = tpms.2,
+        ylab = "", xlab = "",
+        main = "Lam KD",
+        ylim = c(0,1.6),
+        outline = F)
+text(1, 1.3, bquote("p.v"[1] ~ "=" ~
+            .(format(wilcox.test(tpms.2$lam.wt[tpms.2$chrom == "X"],
+                               mu = 1, alt = "l")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(2, 1.3, bquote("p.v"[1] ~ "=" ~
+            .(format(wilcox.test(tpms.2$lam.wt[tpms.2$chrom == "A"],
+                               mu = 1, alt = "l")$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(1.5, 1.08, bquote("p.v"[2] ~ "=" ~
+            .(format(wilcox.test(lam.wt ~ chrom, tpms.2)$p.value,
+                   digits = 2))),
+     cex = 0.7)
+text(c(2.1, 2.1),
+     c(1.6, 1.5),
+     paste0("n genes on ",
+            c("X: ", "A: "),
+            table(tpms.2$chrom)),
+     cex = 0.6)
+
+```
+
