@@ -1,0 +1,218 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+urlcolor: blue
+fontsize: 12pt
+---
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(dplyr)
+library(knitr)
+library(tibble)
+library(data.table)
+library(GenomicAlignments)
+library(GenomicRanges)
+library(ggplot2)
+library(Gviz)
+library(kableExtra)
+rm(list=ls())
+load("RData/kc.nup98.domains.RData")
+load("RData/s2.elys.chip.RData")
+load("RData/s2.tpms.RData")
+load("RData/s2.lam.elys.deseq.RData")
+load("RData/s2.elys.x.nup.RData")
+load("RData/nup98.damid.hmm3.RData")
+options(knitr.table.format = "latex")
+
+```
+
+# 1. Elys ChIP-seq peaks (Capelson) and Nup98 nucleoplasmic (nuc) and nuclear pore-associated (npc) HMM domains
+
+Elys ChIP-seq peaks from S2 cells overlap with Nup98 nuc HMM domains non-randomly
+(p-value < 10^-4^). Overlap with Nup98 npc domains is mostly random (p-value = 0.8588).
+
+There are **`r length(elys.x.nup.nuc)`** Elys ChIP-seq peaks that overlap with 
+nucleoplasmic Nup98 domains. Summary of these domains lengths:
+
+```{r echo = FALSE}
+
+kable(bind_rows(summary(width(elys.x.nup.nuc))), format = "latex") %>% kable_styling(latex_options = c("striped","HOLD_position")) %>% column_spec(1, border_left = T) %>% 
+  column_spec(6, border_right = T)
+```
+
+# 2. Genes which promoters reside in Elys peaks defined above
+
+There are **`r length(genes.x.e.n.nuc)`** genes, which TSSs are in Elys peaks that intersect with Nup98 nuc
+and **`r length(genes.x.e.n.npc)`** genes which TSSs overlap with peaks that overlap with Nup98 npc. 
+**`r length(intersect(genes.x.e.n.npc, genes.x.e.n.nuc))`** genes are in both groups, so they were excluded.
+Expression of genes in either of groups above doesn't significantly change upon Elys KD:
+
+```{r echo = FALSE, fig.height=4, fig.width=6}
+par(mfrow = c(1,2))
+boxplot(s2.elys.TPM$ZTPMav[s2.elys.TPM$id %in% id.1],
+        s2.elys.TPM$ElysTPMav[s2.elys.TPM$id %in% id.1],
+        outline = F, main = "Elys x Nup98 nuc",
+        ylab = "TPM", names = c("WT", "Elys KD"),
+        cex = 2)
+boxplot(s2.elys.TPM$ZTPMav[s2.elys.TPM$id %in% id.2],
+        s2.elys.TPM$ElysTPMav[s2.elys.TPM$id %in% id.2],
+        outline = F, main = "Elys x Nup98 npc",
+        ylab = "TPM", names = c("WT", "Elys KD"))
+```
+
+\newpage
+
+For genes which TSSs reside in Elys peaks that overlap with nucleoplasmic 
+Nup98 domains expression level doesn't change whether we take into account those that
+located on the X-chromosome or autosomes
+
+```{r echo = FALSE, fig.height=4, fig.width=6}
+par(mfrow = c(1,2))
+boxplot(s2.elys.TPM$ZTPMav[s2.elys.TPM$id %in% id.1.a],
+        s2.elys.TPM$ElysTPMav[s2.elys.TPM$id %in% id.1.a],
+        outline = F, main = "Elys x Nup98 nuc on A",
+        ylab = "TPM", names = c("WT", "Elys KD"))
+boxplot(s2.elys.TPM$ZTPMav[s2.elys.TPM$id %in% id.1.x],
+        s2.elys.TPM$ElysTPMav[s2.elys.TPM$id %in% id.1.x],
+        outline = F, main = "Elys x Nup98 nuc on X",
+        ylab = "TPM", names = c("WT", "Elys KD"))
+```  
+
+# 3. Genes with different levels of expressions and their expression level change upon Elys KD
+
+Genes were split based on their expression into 4 groups: **0-1** TPM,
+**1-10** TPM, **10-100** TPM and **>100** TPM. In either of these groups expression changes 
+between WT and KD are insignificant:
+
+```{r echo = FALSE}
+kable(s2.elys.tpm.id.2, digits = 2)%>% kable_styling(latex_options = c("striped","HOLD_position")) %>%
+  row_spec(0, bold = T) %>% 
+  column_spec(1, border_left = T) %>% 
+  column_spec(6, border_right = T)
+
+
+```
+
+# 4. The same only for ratios of TPMs in KD vs WT
+
+```{r echo = FALSE, fig.height= 4, fig.width = 3}
+
+boxplot(s2.elys.tpm.id.1$EKD_norm_WT, outline = F,
+        main = "Genes with TSSs\nin Elys x Nup98 nuc peaks",
+        ylab = "Elys KD TPM/WT TPM", xlab = NULL)
+text(0.9, 1.2, 
+     paste("p.v =",
+           format(wilcox.test(s2.elys.tpm.id.1$EKD_norm_WT, mu = 1, alt = "g")$p.value,
+                  digits = 3)), cex = 0.9)
+```
+
+For genes split by expression level:  
+
+```{r echo = FALSE, fig.height=6, fig.width = 10}
+
+boxplot(EKD_norm_WT ~ TPM_cut, data = s2.elys.tpm.id.1, outline = F,
+        main = "Genes with TSSs in Elys x Nup98 nuc peaks",
+        ylab = "Elys KD TPM/WT TPM", 
+        names = c("0-1", "1-10", "10-100", ">100"),
+        cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+
+kable(s2.elys.tpm.id.3, digits = 2)%>%
+  kable_styling(latex_options = c("striped","HOLD_position")) %>%
+  row_spec(0, bold = T) %>% 
+  column_spec(1, border_left = T) %>% 
+  column_spec(6, border_right = T)
+```
+
+\newpage
+
+# 5. HMM3 for Elys and Nup98 domains
+
+YS decided that we should re-identify Elys and NUP98 domains using HMM with 3 states (using only the highest score category as domains). In the case of Elys he wanted to identify HMM3 domains for each of the biological replica and then use only their intersection. However, he wasn't pleased with the results and decided to stick with the previously made HMM3 domains for merged replicas. In the case of Nup resulted domains were predictably more narrow than HMM2 ones:
+
+```{r echo = FALSE, fig.height=4, fig.width = 11}
+sum.tab <- cbind(rbind(summary(width(kc.nup.npc)),
+                 summary(width(nup98.npc.hmm3)),
+                 summary(width(kc.nup.nuc)),
+                 summary(width(nup98.nuc.hmm3))),
+                 "Sum" = c(sum(width(kc.nup.npc)),
+                 sum(width(nup98.npc.hmm3)),
+                 sum(width(kc.nup.nuc)),
+                 sum(width(nup98.nuc.hmm3))))
+row.names(sum.tab) <- c("NPC HMM2", "NPC HMM3", "NUC HMM2", "NUC HMM3")
+kable(sum.tab, row.names = T) %>%
+  kable_styling(latex_options = c("striped","HOLD_position")) %>% 
+  row_spec(c(2,4), bold = T)%>% 
+  column_spec(1, border_left = T) %>% 
+  column_spec(8, border_right = T)
+```
+
+# 6. H3K27Ac, GAF and pBAP/BAP domains
+
+Next, I had to retrieve some additional data to compare with Nup98 domains. In the case of H3K27Ac ChIP-on-chip I recalculated coverage of peaks using 300nt bins, because R was crashing when tried parsing original data, and used HMM3. pBAP/BAP and GAF peaks were already given. Then I used permutation tests to assess non-randomness of overlaps but noticed some differences when I was using tests based on length of overlaps of randomly shuffled domains and when was using Jaccard index. So I decided to compile a table with results received from both flavours of permutation test:
+
+```{r echo = FALSE, fig.height = 4, fig.width = 11}
+load("RData/nup98.dom.ix.table.RData")
+kable(nup.98.x.df, digits = 3) %>%
+  kable_styling(latex_options = c("striped","HOLD_position")) %>% 
+  row_spec(0, bold = T) %>%
+  column_spec(1, border_left = T) %>% 
+  column_spec(7, border_right = T)
+```
+
+\newpage
+
+# 7. Overlap of embryonic Elys domains with Nup98 domains
+
+In this table I compiled data of Elys domains' overlap with Nup98 HMM3 domains. Though we decided to use HMM3 domains for merged replicas of Elys, I also used ones which were made based on intersection of domains obtained for each of the replicas, but the difference is not very dramatic:
+
+```{r echo = F}
+load("RData/emb.elys.x.nup.df.RData")
+kable(elys.x.nup.df, digits = 3) %>%
+  kable_styling(latex_options = c("striped","HOLD_position")) %>% 
+  row_spec(0, bold = T) %>%
+  column_spec(1, border_left = T) %>% 
+  column_spec(7, border_right = T)
+```
+
+# 8. New approach for Nup98 domains segregation
+
+YS found out that there is a substantional overlap between Nup98 NPC and
+nucleoplasmic domains. Based on this, we decided to throw out regions in
+both of those domain types that overlap with each other. Resulted domains
+are designated Nup98 NPC* and Nup98 Nuc*. Also, it was decided not to use Jaccard
+tests.
+
+In the case of H3K27ac, GAF and pBAP/BAP, Nuc* domains showed non-randomness 
+for all of the proteins/protein complexes, unlike NPC* domains:
+
+```{r echo = FALSE}
+load("RData/nup98.uq.dom.ix.table.RData")
+kable(nup98.x.df.uq %>% 
+        mutate(across(c(4,5,7,8), round, digits = 3),
+               p.v.width = round(p.v.width, digits = 1))) %>% 
+  kable_styling(latex_options = c("striped","HOLD_position")) %>%
+  column_spec(1, border_left = T) %>%
+  column_spec(4:7, width = "2cm") %>% 
+  column_spec(8, width = "2cm",border_right = T) 
+```
+
+The same goes for the intersection with Elys, except for embryos' domains
+where replicas were merged:
+
+```{r echo = FALSE}
+load("RData/emb.elys.x.nup.uq.df.RData")
+kable(elys.x.nup.uq.df %>% 
+        mutate(across(c(5,6,8,9), round, digits = 3)),
+      col.names = linebreak(colnames(elys.x.nup.uq.df))) %>% 
+  kable_styling(latex_options = c("striped","HOLD_position")) %>% 
+  # row_spec(0, bold = T) %>%
+  column_spec(1, border_left = T) %>% 
+  column_spec(5:8, width = "1.5cm") %>% 
+  column_spec(9, width = "1.5cm", border_right = T)
+```
+
+
+
+
+
+

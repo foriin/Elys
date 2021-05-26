@@ -1,7 +1,9 @@
 library(dplyr)
+library(reshape2)
 library(ggplot2)
+library(tibble)
 
-load("RData/tximport.RData")
+load("RData/tximport.RData", verbose = T)
 
 # Merge difseq data and TPM data
 ab <- txi.lartest$abundance %>% as.data.frame()
@@ -54,9 +56,9 @@ boxplot(lam.wt ~ chrom, data = tpms.1,
 wilcox.test(lam.wt ~ chrom, data = tpms.1)
 wilcox.test(el.wt ~ chrom, data = tpms.1)
 
-# Do the same only for genes that are in any experiment have more than 1 TPM
+# Do the same only for genes that are in WT have more than 1 TPM
 
-tpms.3 <- tpms.1 %>% filter(WT > 1, ElysKD > 1, LamKD > 1)
+tpms.3 <- tpms.1 %>% filter(WT > 1)
 tpms.3.m <- melt(tpms.3, measure.vars = c("WT", "ElysKD", "LamKD"))
 tpms.3.chrom.sp <- split(tpms.3.m, list(tpms.3.m$variable, tpms.3.m$chrom))
 
@@ -71,6 +73,22 @@ tpms.el.s <- tpms %>% filter(abs(log2(ElysKD/WT)) > 1,
   mutate(el.wt = ElysKD/WT)
 tpms.el.s.m <- melt(tpms.el.s, measure.vars = c("WT", "ElysKD"))
 tapply(tpms.el.s$el.wt, tpms.el.s$chrom, median)
+
+tpms.el.s %>% group_by(chrom) %>% 
+  summarize(`WT > KD` = sum(WT > ElysKD),
+            `WT <= KD` = sum(WT <= ElysKD)) %>% t()
+
+tpms.lam.s %>% group_by(chrom) %>% 
+  summarize(`WT > KD` = sum(WT > LamKD),
+            `WT <= KD` = sum(WT <= LamKD)) %>% column_to_rownames("chrom") %>% 
+  t() %>% prop.table()
+
+tpms %>% group_by(chrom) %>% 
+  summarize(`WT > KD` = sum(WT > LamKD),
+            `WT <= KD` = sum(WT <= LamKD)) %>% column_to_rownames("chrom") %>% 
+  t() %>% chisq.test()
+
+
 
 # Do the same for lamins KD
 res.df.lam.sig <- res.df.lam %>% filter(padj < 0.05)

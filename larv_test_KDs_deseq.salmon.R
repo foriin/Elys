@@ -35,7 +35,7 @@ files <- paste0("/home/artem/IMG/Projects/Elys/RNA-seq_10.07.19/",
 files <- file.path(files, "quant.genes.sf")
 names(files) <- paste0(rep(c("WT", "ElysKD", "LamKD"), each = 3), 1:3)
 txi.lartest <- tximport(files, "salmon", txOut = T, importer=read.delim,
-                        countsFromAbundance = "lengthScaledTPM")
+                        countsFromAbundance = "scaledTPM")
 
 head(txi.lartest$counts)
 
