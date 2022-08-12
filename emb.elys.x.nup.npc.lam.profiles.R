@@ -153,7 +153,10 @@ dev.off()
 
 
 # Lam profiles in Kc LADs random spots
-
+npc.elys.lad.kc <- subsetByOverlaps(nup.npc.x.elys.emb.1[width(nup.npc.x.elys.emb.1) > 100],
+                                     kc.lam.hmm, ignore.strand = T,
+                                     maxgap = 1999) %>% 
+  resize(width = 1, fix = 'center')
 kc.lam.sn <- tile(kc.lam.hmm, width = 1) %>% unlist()
 
 kc.lad.rand <- kc.lam.sn[sample(1:length(kc.lam.sn), length(npc.elys.lad.kc))]
@@ -256,4 +259,10 @@ dev.off()
 
 
 save(profs, file = "RData/lam.profiles.in.br.nrn.gl.fb.kc.RData")
+npc.elys.lad.emb <- subsetByOverlaps(nup.npc.x.elys.emb.1[width(nup.npc.x.elys.emb.1) > 100],
+                                     lam.emb.hmm3, ignore.strand = T,
+                                     maxgap = 1999) %>% 
+  resize(width = 1, fix = 'center')
+save(npc.elys.lad.nrn, npc.elys.lad.glia, npc.elys.lad.fb, npc.elys.lad.br,
+     npc.elys.lad.kc, npc.elys.lad.emb, file = "RData/elys.nup.npc.x.LADs.RData")
 
