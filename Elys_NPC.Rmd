@@ -4,7 +4,10 @@ output:
   html_document: default
 urlcolor: blue
 fontsize: 12pt
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path("report", paste0(Sys.Date(), "_Elys.Chip-seq.Capelson.NPC.pdf"))) })
 ---
+
+
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 library(dplyr)
 library(knitr)
@@ -40,7 +43,7 @@ kable(bind_rows(summary(width(elys.x.nup.nuc))), format = "latex") %>% kable_sty
   column_spec(6, border_right = T)
 ```
 
-# 2. Genes which promoters reside in Elys peaks defined above
+# 2. Genes with promoters residing inside Elys peaks defined above
 
 There are **`r length(genes.x.e.n.nuc)`** genes, which TSSs are in Elys peaks that intersect with Nup98 nuc
 and **`r length(genes.x.e.n.npc)`** genes which TSSs overlap with peaks that overlap with Nup98 npc. 
@@ -125,7 +128,7 @@ kable(s2.elys.tpm.id.3, digits = 2)%>%
 
 \newpage
 
-# 5. HMM3 for Elys and Nup98 domains
+# 5. HMM3 for Elys and Nup98 domains; HMM2 for LADs
 
 YS decided that we should re-identify Elys and NUP98 domains using HMM with 3 states (using only the highest score category as domains). In the case of Elys he wanted to identify HMM3 domains for each of the biological replica and then use only their intersection. However, he wasn't pleased with the results and decided to stick with the previously made HMM3 domains for merged replicas. In the case of Nup resulted domains were predictably more narrow than HMM2 ones:
 
@@ -145,6 +148,20 @@ kable(sum.tab, row.names = T) %>%
   column_spec(1, border_left = T) %>% 
   column_spec(8, border_right = T)
 ```
+
+Additionally, it was decided to fill all the gaps lesser than 900 bp in Elys HMM3 embryonic domains. 
+In this project we used HMM2 domains of Lamin B as embryonic LADs. I also filled the gaps in those:
+
+```{r echo = FALSE,warning=F, fig.height=4, fig.width = 11}
+load("RData/emb.lam.elys.curr.nogap.RData")
+sum.tab <- sapply(list(lam.emb.hmm2.ng, elys.emb.hmm3.ng), function(x) summary(width(x))) %>% t %>% as_tibble() %>% cbind(., sapply(list(lam.emb.hmm2.ng, elys.emb.hmm3.ng), function(x) c(length(x), sum(width(x)))) %>% t %>% as_tibble() %>% setNames(c("n", "Total length")))
+row.names(sum.tab) <- c("Lam HMM2", "Elys HMM3")
+kable(sum.tab, row.names = T) %>%
+  kable_styling(latex_options = c("striped","HOLD_position")) %>% 
+  column_spec(1, border_left = T) %>% 
+  column_spec(9, border_right = T)
+```
+
 
 # 6. H3K27Ac, GAF and pBAP/BAP domains
 
@@ -179,28 +196,32 @@ kable(elys.x.nup.df, digits = 3) %>%
 YS found out that there is a substantional overlap between Nup98 NPC and
 nucleoplasmic domains. Based on this, we decided to throw out regions in
 both of those domain types that overlap with each other. Resulted domains
-are designated Nup98 NPC* and Nup98 Nuc*. Also, it was decided not to use Jaccard
+are designated Nup98 NPC* and Nup98 Nuc*.
+
+*Upd.1* It was decided not to use Jaccard
 tests.
+
+*Upd.2* We filled the gaps lesser than 900 bp in both NPC* and NUC*
 
 In the case of H3K27ac, GAF and pBAP/BAP, Nuc* domains showed non-randomness 
 for all of the proteins/protein complexes, unlike NPC* domains:
 
 ```{r echo = FALSE}
-load("RData/nup98.uq.dom.ix.table.RData")
+load("RData/nup98.uq.ng.dom.ix.table.RData")
 kable(nup98.x.df.uq %>% 
         mutate(across(c(4,5,7,8), round, digits = 3),
-               p.v.width = round(p.v.width, digits = 1))) %>% 
+               p.v.width = round(p.v.width, digits = 2))) %>% 
   kable_styling(latex_options = c("striped","HOLD_position")) %>%
   column_spec(1, border_left = T) %>%
   column_spec(4:7, width = "2cm") %>% 
   column_spec(8, width = "2cm",border_right = T) 
 ```
 
-The same goes for the intersection with Elys, except for embryos' domains
-where replicas were merged:
+The same goes for the intersection with Elys in S2, but not for HMM3 domains in
+embryos:
 
 ```{r echo = FALSE}
-load("RData/emb.elys.x.nup.uq.df.RData")
+load("RData/emb.elys.x.nup.uq.ng.df.RData")
 kable(elys.x.nup.uq.df %>% 
         mutate(across(c(5,6,8,9), round, digits = 3)),
       col.names = linebreak(colnames(elys.x.nup.uq.df))) %>% 

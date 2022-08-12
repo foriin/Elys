@@ -166,6 +166,3 @@ elys.x.nup.uq.df <- tibble(Tissue = rep(c("S2", "Embryo", "Embryo"), each = 2),
 )
 save(elys.x.nup.uq.df,
      file = "RData/emb.elys.x.nup.uq.df.RData")
-save(e.elys.x.nup.npc,
-     e.elys.x.nup.nuc,
-     file = "RData/emb.elys.merge.x.nup.uq.RData")

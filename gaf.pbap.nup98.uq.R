@@ -26,10 +26,10 @@ chroms <- c("2L", "2R", "3L", "3R", "X")
 load("RData/nup98.damid.hmm3.strict.RData", verbose = T)
 
 s2.gaf.conf.peaks <- import.bed("bed/s2.gaf.conf.peaks.bed")
+seqlevels(s2.gaf.conf.peaks) <- sub("chr", "", seqlevels(s2.gaf.conf.peaks))
 s2.gaf.conf.peaks <- s2.gaf.conf.peaks[seqnames(s2.gaf.conf.peaks) %in% chroms]
 seqlevels(s2.gaf.conf.peaks) <- seqlevelsInUse(s2.gaf.conf.peaks)
 seqlevels(s2.gaf.conf.peaks) <- chroms
-# seqlevels(s2.gaf.conf.peaks) <- sub("chr", "", seqlevels(s2.gaf.conf.peaks))
 
 s2.pbap.bap.peaks <- import.bed("bed/pbap.bap.bed")
 seqlevels(s2.pbap.bap.peaks) <- sub("chr", "", seqlevels(s2.pbap.bap.peaks))

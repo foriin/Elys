@@ -1,7 +1,7 @@
 library(dplyr)
 library(ggplot2)
 
-load("RData/tximport.RData")
+load("RData/tximport.RData", verbose = T)
 
 # Merge difseq data and TPM data
 ab <- txi.lartest$abundance %>% as.data.frame()

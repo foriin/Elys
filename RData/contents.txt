@@ -1,0 +1,48 @@
+elys.npc.x.chrom.colours.RData
+e.elys.npc.active e.elys.npc.inactive e.elys.x.nup.npc.gr 
+emb.elys.hmm3.strict.RData
+elys.emb.hmm.x 
+emb.elys.merge.x.nup.uq.RData
+e.elys.x.nup.npc e.elys.x.nup.nuc 
+emb.elys.x.nup.df.2.RData
+elys.x.nup.df 
+emb.elys.x.nup.df.RData
+elys.x.nup.df 
+emb.elys.x.nup.uq.df.RData
+elys.x.nup.uq.df 
+emb.hmm3.RData
+elys.emb.hmm3 elys.emb.pr lam.emb.hmm3 lam.emb.pr 
+emb.hmm.RData
+elys.emb.hmm2 lam.emb.hmm2 
+h3k27ac.RData
+h3k27ac.chip.bin h3k27ac.hmm3 
+kc.lam.profile.ma.RData
+kc.bin.lam.pr kc.bins.lam.pr.f kc.lam.ma 
+kc.nup98.domains.RData
+kc.nup.npc kc.nup.nuc 
+lartest.DESeq.RData
+genes res.df.elys res.df.lam 
+nup98.damid.hmm3.RData
+nup98.npc.hmm3 nup98.nuc.hmm3 
+nup98.damid.hmm3.strict.RData
+nup98.npc.hmm3.uq nup98.nuc.hmm3.uq 
+nup98.damid.log2.RData
+nup98.npc.wig nup98.nucl.wig 
+nup98.dom.ix.table.RData
+nup.98.x.df 
+nup98.uq.dom.ix.table.RData
+nup98.x.df.uq 
+s2.elys.chip.bin.RData
+s2.elys.chip.bins s2.elys.chip.bins.2 
+s2.elys.chip.RData
+s2.chip.bed s2.chip.bg 
+s2.elys.x.nup.RData
+elys.x.nup.npc elys.x.nup.nuc genes.x.e.n.npc genes.x.e.n.nuc id.1 id.1.a id.1.x id.2 s2.elys.tpm.id.1 s2.elys.tpm.id.2 s2.elys.tpm.id.3 
+s2.lam.elys.deseq.RData
+res.df.elyskd res.df.lamkd 
+s2.tpms.RData
+s2.elys.TPM s2.lam.TPM 
+tpms.analysis.RData
+res.df.elys.sig res.df.lam.sig spc.genes tpms tpms.1 tpms.2 tpms.2.m tpms.2.sp tpms.3 tpms.3.chrom.sp tpms.3.m tpms.chrom.sp tpms.el.s tpms.el.s.m tpm.sig tpms.lam.s tpms.lam.s.m tpms.m 
+tximport.RData
+txi.lartest 
